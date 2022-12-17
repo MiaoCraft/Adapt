@@ -22,6 +22,8 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --full-stacktrace
         
-      - uses: actions/upload-artifact@v2
+      - name: Upload a Build Target 
+        uses: actions/upload-artifact@v2
         with:
           name: Adapt
+          path: /
