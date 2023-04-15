@@ -21,10 +21,16 @@ package com.volmit.adapt;
 import art.arcane.amulet.io.FolderWatcher;
 import com.volmit.adapt.api.data.WorldData;
 import com.volmit.adapt.api.potion.BrewingManager;
+import com.volmit.adapt.api.protection.ProtectorRegistry;
 import com.volmit.adapt.api.tick.Ticker;
 import com.volmit.adapt.api.value.MaterialValue;
 import com.volmit.adapt.api.world.AdaptServer;
 import com.volmit.adapt.commands.CommandAdapt;
+import com.volmit.adapt.content.gui.SkillsGui;
+import com.volmit.adapt.content.protector.ChestProtectProtector;
+import com.volmit.adapt.content.protector.FactionsClaimProtector;
+import com.volmit.adapt.content.protector.ResidenceProtector;
+import com.volmit.adapt.content.protector.WorldGuardProtector;
 import com.volmit.adapt.nms.NMS;
 import com.volmit.adapt.util.*;
 import com.volmit.adapt.util.secret.SecretSplash;
@@ -36,13 +42,17 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 public class Adapt extends VolmitPlugin {
     public static Adapt instance;
@@ -60,6 +70,11 @@ public class Adapt extends VolmitPlugin {
     private FolderWatcher configWatcher;
     @Getter
     private SQLManager sqlManager;
+    @Getter
+    private ProtectorRegistry protectorRegistry;
+    @Getter
+    private Map<String, Window> guiLeftovers = new HashMap<>();
+
 
     public Adapt() {
         super();
@@ -164,6 +179,56 @@ public class Adapt extends VolmitPlugin {
         }
     }
 
+    public static void hotloaded() {
+        J.s(() -> {
+            instance.guiLeftovers.values().forEach(window -> {
+                HandlerList.unregisterAll((Listener) window);
+                window.close();
+            });
+            instance.stop();
+            instance.start();
+
+            instance.getGuiLeftovers().forEach((s, window) -> {
+
+                if (window.getTag() != null) {
+                    if (window.getTag().equals("/")) {
+                        SkillsGui.open(Bukkit.getPlayer(UUID.fromString(s)));
+                    } else {
+                        String[] split = window.getTag().split("\\Q/\\E");
+                        if (split.length == 2) {
+                            if (split[0].equals("skill")) {
+                                instance.getAdaptServer().getSkillRegistry().getSkill(split[1]).openGui(Bukkit.getPlayer(UUID.fromString(s)));
+                            }
+                        } else if (split.length == 3) {
+                            if (split[0].equals("skill")) {
+                                try {
+                                    instance.getAdaptServer().getSkillRegistry().getSkill(split[1]).getAdaptations().where(a -> a.getId().equals(split[2])).get(0).openGui(Bukkit.getPlayer(UUID.fromString(s)));
+
+                                } catch (Throwable e) {
+                                    instance.getAdaptServer().getSkillRegistry().getSkill(split[1]).openGui(Bukkit.getPlayer(UUID.fromString(s)));
+                                }
+                            }
+                        }
+                    }
+
+                }
+            });
+
+        }, 20);
+    }
+
+    public void startSim() {
+        ticker = new Ticker();
+        adaptServer = new AdaptServer();
+    }
+
+    public void stopSim() {
+        ticker.clear();
+        adaptServer.unregister();
+        MaterialValue.save();
+        WorldData.stop();
+    }
+
     @Override
     public void start() {
         NMS.init();
@@ -172,26 +237,38 @@ public class Adapt extends VolmitPlugin {
             new PapiExpansion().register();
         }
         printInformation();
-        ticker = new Ticker();
         sqlManager = new SQLManager();
         if (AdaptConfig.get().isUseSql()) {
             sqlManager.establishConnection();
         }
-        adaptServer = new AdaptServer();
+        startSim();
         registerListener(new BrewingManager());
         setupMetrics();
         startupPrint(); // Splash screen
         if (AdaptConfig.get().isAutoUpdateCheck()) {
             autoUpdateCheck();
         }
+        protectorRegistry = new ProtectorRegistry();
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            protectorRegistry.registerProtector(new WorldGuardProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("Factions") != null) {
+            protectorRegistry.registerProtector(new FactionsClaimProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("ChestProtect") != null) {
+            protectorRegistry.registerProtector(new ChestProtectProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("Residence") != null) {
+            protectorRegistry.registerProtector(new ResidenceProtector());
+        }
     }
 
     @Override
     public void stop() {
         sqlManager.closeConnection();
-        adaptServer.unregister();
-        MaterialValue.save();
-        WorldData.stop();
+        stopSim();
+        protectorRegistry.unregisterAll();
+
     }
 
     private void startupPrint() {
@@ -226,6 +303,4 @@ public class Adapt extends VolmitPlugin {
             new Metrics(this, 13412);
         }
     }
-
-
 }

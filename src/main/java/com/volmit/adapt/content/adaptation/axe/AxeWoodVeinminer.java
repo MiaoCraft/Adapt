@@ -86,7 +86,6 @@ public class AxeWoodVeinminer extends SimpleAdaptation<AxeWoodVeinminer.Config> 
             }
 
             if (isLog(new ItemStack(e.getBlock().getType()))) {
-
                 Block block = e.getBlock();
                 Set<Block> blockMap = new HashSet<>();
                 int blockCount = 0;
@@ -105,6 +104,10 @@ public class AxeWoodVeinminer extends SimpleAdaptation<AxeWoodVeinminer.Config> 
                                         Adapt.verbose("Block: " + b.getLocation() + " is too far away from " + block.getLocation() + " (" + getRadius(getLevel(p)) + ")");
                                         continue;
                                     }
+                                    if (!canBlockBreak(p, b.getLocation())) {
+                                        Adapt.verbose("Player " + p.getName() + " doesn't have permission.");
+                                        continue;
+                                    }
                                     blockMap.add(b);
                                 }
                             }
@@ -114,7 +117,7 @@ public class AxeWoodVeinminer extends SimpleAdaptation<AxeWoodVeinminer.Config> 
 
                 J.s(() -> {
                     for (Block blocks : blockMap) {
-                        if (getPlayer(p).getData().getSkillLines().get("axes").getAdaptations().get("axe-drop-to-inventory").getLevel() > 0) {
+                        if (getPlayer(p).getData().getSkillLines().get("axes").getAdaptations().get("axe-drop-to-inventory") != null && getPlayer(p).getData().getSkillLines().get("axes").getAdaptations().get("axe-drop-to-inventory").getLevel() > 0) {
                             Collection<ItemStack> items = blocks.getDrops();
                             for (ItemStack item : items) {
                                 safeGiveItem(p, item);

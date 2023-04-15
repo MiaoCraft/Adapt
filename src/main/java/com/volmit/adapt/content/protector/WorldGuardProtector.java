@@ -1,0 +1,119 @@
+/*------------------------------------------------------------------------------
+ -   Adapt is a Skill/Integration plugin  for Minecraft Bukkit Servers
+ -   Copyright (c) 2022 Arcane Arts (Volmit Software)
+ -
+ -   This program is free software: you can redistribute it and/or modify
+ -   it under the terms of the GNU General Public License as published by
+ -   the Free Software Foundation, either version 3 of the License, or
+ -   (at your option) any later version.
+ -
+ -   This program is distributed in the hope that it will be useful,
+ -   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ -   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ -   GNU General Public License for more details.
+ -
+ -   You should have received a copy of the GNU General Public License
+ -   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -----------------------------------------------------------------------------*/
+
+package com.volmit.adapt.content.protector;
+
+import art.arcane.curse.Curse;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldguard.protection.association.DelayedRegionOverlapAssociation;
+import com.sk89q.worldguard.protection.flags.Flag;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
+import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
+import com.sk89q.worldguard.protection.regions.RegionQuery;
+import com.volmit.adapt.Adapt;
+import com.volmit.adapt.AdaptConfig;
+import com.volmit.adapt.api.adaptation.Adaptation;
+import com.volmit.adapt.api.protection.Protector;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+
+import java.util.concurrent.ConcurrentMap;
+
+public class WorldGuardProtector implements Protector {
+
+    private final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+    private final StateFlag flag;
+
+    public WorldGuardProtector() {
+        this.flag = new StateFlag("use-adaptations", false);
+        FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
+        ConcurrentMap<String, Flag<?>> flags = Curse.on(registry).field("flags").get(); // this is black magic
+        flags.put(flag.getName().toLowerCase(), flag); // add it to the registry
+    }
+
+    @Override
+    public boolean checkRegion(Player player, Location location, Adaptation<?> adaptation) {
+        return checkPerm(player, location, flag);
+    }
+
+    @Override
+    public boolean canBlockBreak(Player player, Location blockLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, blockLocation, adaptation) && checkPerm(blockLocation, Flags.BLOCK_BREAK);
+    }
+
+    @Override
+    public boolean canBlockPlace(Player player, Location blockLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, blockLocation, adaptation) && checkPerm(blockLocation, Flags.BLOCK_PLACE);
+    }
+
+    @Override
+    public boolean canPVP(Player player, Location entityLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, entityLocation, adaptation) && checkPerm(entityLocation, Flags.PVP);
+    }
+
+    @Override
+    public boolean canPVE(Player player, Location entityLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, entityLocation, adaptation) && checkPerm(entityLocation, Flags.DAMAGE_ANIMALS);
+    }
+
+    @Override
+    public boolean canInteract(Player player, Location targetLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, targetLocation, adaptation) && checkPerm(targetLocation, Flags.INTERACT);
+    }
+
+    @Override
+    public boolean canAccessChest(Player player, Location chestLocation, Adaptation<?> adaptation) {
+        return checkRegion(player, chestLocation, adaptation) && checkPerm(chestLocation, Flags.CHEST_ACCESS);
+    }
+
+    private boolean checkPerm(Location location, StateFlag flag) {
+        return checkPerm(null, location, flag);
+    }
+
+    private boolean checkPerm(Player player, Location location, StateFlag flag) {
+        RegionQuery regionQuery = container.createQuery();
+        com.sk89q.worldedit.util.Location loc = BukkitAdapter.adapt(location);
+        if (player == null) {
+            return regionQuery.queryState(loc, new DelayedRegionOverlapAssociation(regionQuery, loc), flag) != StateFlag.State.DENY;
+        }
+        if (!hasBypass(player, location))
+            return regionQuery.queryState(loc, WorldGuardPlugin.inst().wrapPlayer(player), flag) != StateFlag.State.DENY;
+        return true;
+    }
+
+    @Override
+    public String getName() {
+        return "WorldGuard";
+    }
+
+    @Override
+    public boolean isEnabledByDefault() {
+        return AdaptConfig.get().getProtectorSupport().isWorldguard();
+    }
+
+    private boolean hasBypass(Player p, Location l) {
+        LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(p);
+        com.sk89q.worldedit.world.World world = BukkitAdapter.adapt(l.getWorld());
+        return WorldGuard.getInstance().getPlatform().getSessionManager().hasBypass(localPlayer, world);
+    }
+}

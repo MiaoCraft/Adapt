@@ -92,11 +92,16 @@ public abstract class SimpleAdaptation<T> extends TickedObject implements Adapta
             Adapt.instance.getTicker().register(new TickedObject("config", "config-adaptation-" + getName(), 1000) {
                 @Override
                 public void onTick() {
-                    if (fw.checkModified() && file.exists()) {
-                        config = null;
-                        getConfig();
-                        Adapt.info("Hotloaded " + file.getPath());
-                        fw.checkModified();
+                    try {
+                        if (fw.checkModified() && file.exists()) {
+                            config = null;
+                            getConfig();
+                            Adapt.info("Hotloaded " + file.getPath());
+                            Adapt.hotloaded();
+                            fw.checkModified();
+                        }
+                    } catch (Throwable e) {
+                        e.printStackTrace();
                     }
                 }
             });
@@ -170,7 +175,7 @@ public abstract class SimpleAdaptation<T> extends TickedObject implements Adapta
         return AdaptAdvancement.builder()
                 .key("adaptation_" + getName())
                 .title(C.WHITE + "[     " + getDisplayName() + C.WHITE + "     ]")
-                .description(getDescription() + ". " + Localizer.dLocalize("snippets", "gui", "unlockthisbyclicking"))
+                .description(getDescription() + ". " + Localizer.dLocalize("snippets", "gui", "unlockthisbyclicking") + " " + Localizer.dLocalize("snippets", "adaptmenu", "activatorblock"))
                 .icon(getIcon())
                 .children(a)
                 .visibility(AdvancementVisibility.PARENT_GRANTED)

@@ -44,6 +44,7 @@ public class AdaptConfig {
     public boolean allowAdaptationsInCreative = false;
     public String adaptActivatorBlock = "BOOKSHELF";
     public List<String> blacklistedWorlds = List.of("some_world_adapt_should_not_run_in", "anotherWorldFolderName");
+    boolean preventHunterSkillsWhenHungerApplied = true;
     private ValueConfig value = new ValueConfig();
     private boolean metrics = true;
     private String language = "en_US";
@@ -52,7 +53,6 @@ public class AdaptConfig {
     private double playerXpPerSkillLevelUpBase = 489;
     private double playerXpPerSkillLevelUpLevelMultiplier = 44;
     private double powerPerLevel = 0.73;
-    private boolean requireWorldguardBuildPermToUseAdaptations = true;
     private boolean hardcoreResetOnPlayerDeath = false;
     private boolean hardcoreNoRefunds = false;
     private boolean loginBonus = true;
@@ -66,8 +66,13 @@ public class AdaptConfig {
     private boolean actionbarNotifyXp = true;
     private boolean actionbarNotifyLevel = true;
     private boolean unlearnAllButton = false;
-    private boolean potionStackingPreventionInAllSKills = false;
     private SqlSettings sql = new SqlSettings();
+    private Protector protectorSupport = new Protector();
+    private Map<String, Map<String, Boolean>> protectionOverrides = Map.of(
+            "adaptation-name", Map.of(
+                    "WorldGuard", true
+            )
+    );
 
     @Setter
     private boolean verbose = false;
@@ -98,6 +103,14 @@ public class AdaptConfig {
         }
 
         return config;
+    }
+
+    @Getter
+    public static class Protector {
+        private boolean worldguard = true;
+        private boolean factionsClaim = false;
+        private boolean residence = true;
+        private boolean chestProtect = true;
     }
 
 

@@ -28,6 +28,8 @@ public class CommandBoost extends MortarCommand {
     private static final List<String> permission = List.of("adapt.boost");
     @Command
     private final CommandBoostPlayer player = new CommandBoostPlayer();
+    @Command
+    private final CommandBoostGlobal global = new CommandBoostGlobal();
 
     public CommandBoost() {
         super("boost", "b");

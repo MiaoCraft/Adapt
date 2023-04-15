@@ -118,12 +118,17 @@ public interface Skill<T> extends Ticked, Component {
     }
 
     default void xp(Player p, double xp) {
-        if (p.getClass().getSimpleName().equals("CraftPlayer")) {
-            xp(p, p.getLocation(), xp);
+        if (!p.getClass().getSimpleName().equals("CraftPlayer")) {
+            return;
         }
+        xp(p, p.getLocation(), xp);
+
     }
 
     default void xp(Player p, Location at, double xp) {
+        if (!p.getClass().getSimpleName().equals("CraftPlayer")) {
+            return;
+        }
         try {
             XP.xp(p, this, xp);
             if (xp > 50) {
@@ -135,16 +140,33 @@ public interface Skill<T> extends Ticked, Component {
         }
     }
 
-    default void xpSilent(Player p, double xp) {
-        if (p.getClass().getSimpleName().equals("CraftPlayer")) {
-            try {
-                XP.xpSilent(p, this, xp);
-            } catch (
-                    Exception ignored) { // Player was Given XP (Likely Teleportation) before i can see it because some plugin has higher priority than me and moves a player. so im not going to throw an error, as i know why it's happening.
-                Adapt.verbose("Player was Given XP (Likely Teleportation) before i can see it because some plugin has higher priority than me and moves a player. so im not going to throw an error, as i know why it's happening.");
+    default void xpS(Player p, Location at, double xp) {
+        if (!p.getClass().getSimpleName().equals("CraftPlayer")) {
+            return;
+        }
+        try {
+            XP.xpSilent(p, this, xp);
+            if (xp > 50) {
+                vfxXP(p, at, (int) xp);
             }
+            Adapt.verbose("Gave " + p.getName() + " " + xp + " xp in " + getName() + " " + this.getClass());
+        } catch (Exception e) {
+            Adapt.verbose("Failed to give xp to " + p.getName() + " for " + getName() + " (" + xp + ")");
         }
     }
+
+    default void xpSilent(Player p, double xp) {
+        if (!p.getClass().getSimpleName().equals("CraftPlayer")) {
+            return;
+        }
+        try {
+            XP.xpSilent(p, this, xp);
+        } catch (
+                Exception ignored) { // Player was Given XP (Likely Teleportation) before i can see it because some plugin has higher priority than me and moves a player. so im not going to throw an error, as i know why it's happening.
+            Adapt.verbose("Player was Given XP (Likely Teleportation) before i can see it because some plugin has higher priority than me and moves a player. so im not going to throw an error, as i know why it's happening.");
+        }
+    }
+
 
     default void xp(Location at, double xp, int rad, long duration) {
         XP.spatialXP(at, this, xp, rad, duration);
@@ -166,6 +188,7 @@ public interface Skill<T> extends Ticked, Component {
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.455f);
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.3f, 1.855f);
         Window w = new UIWindow(player);
+        w.setTag("skill/" + getName());
         w.setDecorator((window, position, row) -> new UIElement("bg").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
 
         int ind = 0;
@@ -183,6 +206,7 @@ public interface Skill<T> extends Ticked, Component {
                     .onLeftClick((e) -> {
                         w.close();
                         i.openGui(player);
+
                     }));
             ind++;
         }
@@ -204,6 +228,7 @@ public interface Skill<T> extends Ticked, Component {
         w.setTitle(getDisplayName(a.getSkillLine(getName()).getLevel()) + " " + Form.pc(XP.getLevelProgress(a.getSkillLine(getName()).getXp())) + " (" + Form.f((int) XP.getXpUntilLevelUp(a.getSkillLine(getName()).getXp())) + Localizer.dLocalize("snippets", "gui", "xp") + " " + (a.getSkillLine(getName()).getLevel() + 1) + ")");
         w.onClosed((vv) -> J.s(() -> onGuiClose(player, !AdaptConfig.get().isEscClosesAllGuis())));
         w.open();
+        Adapt.instance.getGuiLeftovers().put(player.getUniqueId().toString(), w);
     }
 
     private void onGuiClose(Player player, boolean openPrevGui) {

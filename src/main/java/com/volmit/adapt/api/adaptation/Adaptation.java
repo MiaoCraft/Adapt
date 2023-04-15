@@ -18,17 +18,13 @@
 
 package com.volmit.adapt.api.adaptation;
 
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.LocalPlayer;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.flags.Flags;
-import com.sk89q.worldguard.protection.regions.RegionQuery;
+import com.google.common.collect.ImmutableSet;
 import com.volmit.adapt.Adapt;
 import com.volmit.adapt.AdaptConfig;
 import com.volmit.adapt.api.Component;
 import com.volmit.adapt.api.advancement.AdaptAdvancement;
 import com.volmit.adapt.api.potion.BrewingRecipe;
+import com.volmit.adapt.api.protection.Protector;
 import com.volmit.adapt.api.recipe.AdaptRecipe;
 import com.volmit.adapt.api.skill.Skill;
 import com.volmit.adapt.api.tick.Ticked;
@@ -43,7 +39,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Recipe;
 
-import java.util.List;
+import java.util.*;
 
 public interface Adaptation<T> extends Ticked, Component {
     int getMaxLevel();
@@ -167,26 +163,59 @@ public interface Adaptation<T> extends Ticked, Component {
 
     void onRegisterAdvancements(List<AdaptAdvancement> advancements);
 
-    private boolean canBuild(Player p, Location l) {
-        RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-        com.sk89q.worldedit.util.Location loc = BukkitAdapter.adapt(l);
-        if (!hasBypass(p, l)) {
-            return query.testState(loc, WorldGuardPlugin.inst().wrapPlayer(p), Flags.BUILD);
-        } else {
-            return true;
-        }
+    default Set<Protector> getProtectors() {
+        Set<Protector> protectors = new HashSet<>(Adapt.instance.getProtectorRegistry().getDefaultProtectors());
+        Map<String, Boolean> overrides = AdaptConfig.get().getProtectionOverrides().getOrDefault(this.getName(), Collections.emptyMap());
+        overrides.forEach((protector, enabled) -> {
+            if (enabled) {
+                Protector p = Adapt.instance.getProtectorRegistry().getAllProtectors()
+                        .stream()
+                        .filter(pr -> pr.getName().equals(protector))
+                        .findFirst()
+                        .orElse(null);
+                if (p == null) {
+                    Adapt.error("Could not find protector " + protector + " for adaptation " + this.getName() + ". Skipping...");
+                } else {
+                    protectors.add(p);
+                }
+            } else {
+                protectors.removeIf(pr -> pr.getName().equals(protector));
+            }
+        });
+        return ImmutableSet.copyOf(protectors);
     }
 
-    private boolean hasBypass(Player p, Location l) {
-        LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(p);
-        com.sk89q.worldedit.world.World world = BukkitAdapter.adapt(l.getWorld());
-        return WorldGuard.getInstance().getPlatform().getSessionManager().hasBypass(localPlayer, world);
+    default boolean canBlockBreak(Player player, Location blockLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canBlockBreak(player, blockLocation, this));
     }
 
+    default boolean canBlockPlace(Player player, Location blockLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canBlockPlace(player, blockLocation, this));
+    }
+
+    default boolean canPVP(Player player, Location victimLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canPVP(player, victimLocation, this));
+    }
+
+    default boolean canPVE(Player player, Location victimLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canPVE(player, victimLocation, this));
+    }
+
+    default boolean canInteract(Player player, Location targetLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canInteract(player, targetLocation, this));
+    }
+
+    default boolean canAccessChest(Player player, Location chestLocation) {
+        return getProtectors().stream().allMatch(protector -> protector.canAccessChest(player, chestLocation, this));
+    }
+
+    default boolean checkRegion(Player player) {
+        return getProtectors().stream().allMatch(protector -> protector.checkRegion(player, player.getLocation(), this));
+    }
 
     default boolean hasAdaptation(Player p) {
         try {
-            if (p == null) {
+            if (p == null || p.isDead()) { // Check if player is not invalid
                 return false;
             }
             if (!this.getSkill().isEnabled()) {
@@ -202,10 +231,8 @@ public interface Adaptation<T> extends Ticked, Component {
                     Adapt.verbose("Player " + p.getName() + " is in creative or spectator mode. Skipping adaptation " + this.getName());
                     return false;
                 }
-                if ((Bukkit.getServer().getPluginManager().getPlugin("WorldGuard") != null && Bukkit.getServer().getPluginManager().getPlugin("WorldGuard").isEnabled())
-                        && AdaptConfig.get().isRequireWorldguardBuildPermToUseAdaptations()
-                        && !canBuild(p, p.getLocation())) {
-                    Adapt.verbose("Player " + p.getName() + " tried to use adaptation " + this.getName() + " but they don't have worldguard build permission.");
+                if (!checkRegion(p)) {
+                    Adapt.verbose("Player " + p.getName() + " don't have adaptation - " + this.getName() + " permission.");
                     return false;
                 }
                 Adapt.verbose("Player " + p.getName() + " used adaptation " + this.getName());
@@ -333,6 +360,7 @@ public interface Adaptation<T> extends Ticked, Component {
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 0.655f);
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.3f, 0.855f);
         Window w = new UIWindow(player);
+        w.setTag("skill/" + getSkill().getName() + "/" + getName());
         w.setDecorator((window, position, row) -> new UIElement("bg").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
         w.setResolution(WindowResolution.W9_H6);
         int o = 0;
@@ -370,7 +398,7 @@ public interface Adaptation<T> extends Ticked, Component {
                     .setProgress(1D)
                     .addLore(Form.wrapWordsPrefixed(getDescription(), "" + C.GRAY, 40))
                     .addLore(mylevel >= lvl ? ("") : ("" + C.WHITE + c + C.GRAY + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledgecost") + " " + (AdaptConfig.get().isHardcoreNoRefunds() ? C.DARK_RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "norefunds") : "")))
-                    .addLore(mylevel >= lvl ? AdaptConfig.get().isHardcoreNoRefunds() ? (C.GREEN + Localizer.dLocalize("snippets", "adaptmenu", "alreadylearned") + " " + C.DARK_RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "norefunds")) : (isPermanent() ? "" : (C.GREEN + Localizer.dLocalize("snippets", "adaptmenu", "alreadylearned") + " " + C.GRAY + Localizer.dLocalize("snippets", "adaptmenu", "unlearnrefund") + " " + C.GREEN + rc + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledgecost"))) : (k >= c ? (C.BLUE + Localizer.dLocalize("snippets", "adaptmenu", "clicklearn") + " " + getDisplayName(i)) : (k == 0 ? (C.RED + Localizer.dLocalize("snippets", "adaptmenu", "noknowledge")) : (C.RED + "(" + Localizer.dLocalize("snippets", "adaptmenu", "youonlyhave") + " " + C.WHITE + k + C.RED + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledgecost") + ")"))))
+                    .addLore(mylevel >= lvl ? AdaptConfig.get().isHardcoreNoRefunds() ? (C.GREEN + Localizer.dLocalize("snippets", "adaptmenu", "alreadylearned") + " " + C.DARK_RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "norefunds")) : (isPermanent() ? "" : (C.GREEN + Localizer.dLocalize("snippets", "adaptmenu", "alreadylearned") + " " + C.GRAY + Localizer.dLocalize("snippets", "adaptmenu", "unlearnrefund") + " " + C.GREEN + rc + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledgecost"))) : (k >= c ? (C.BLUE + Localizer.dLocalize("snippets", "adaptmenu", "clicklearn") + " " + getDisplayName(i)) : (k == 0 ? (C.RED + Localizer.dLocalize("snippets", "adaptmenu", "noknowledge")) : (C.RED + "(" + Localizer.dLocalize("snippets", "adaptmenu", "youonlyhave") + " " + C.WHITE + k + C.RED + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledgeavailable") + ")"))))
                     .addLore(mylevel < lvl && getPlayer(player).getData().hasPowerAvailable(pc) ? C.GREEN + "" + lvl + " " + Localizer.dLocalize("snippets", "adaptmenu", "powerdrain") : mylevel >= lvl ? C.GREEN + "" + lvl + " " + Localizer.dLocalize("snippets", "adaptmenu", "powerdrain") : C.RED + Localizer.dLocalize("snippets", "adaptmenu", "notenoughpower") + "\n" + C.RED + Localizer.dLocalize("snippets", "adaptmenu", "howtolevelup"))
                     .addLore((isPermanent() ? C.RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "maynotunlearn") : ""))
                     .onLeftClick((e) -> {
@@ -436,6 +464,7 @@ public interface Adaptation<T> extends Ticked, Component {
         w.setTitle(getDisplayName() + " " + C.DARK_GRAY + " " + Form.f(a.getSkillLine(getSkill().getName()).getKnowledge()) + " " + Localizer.dLocalize("snippets", "adaptmenu", "knowledge"));
         w.onClosed((vv) -> J.s(() -> onGuiClose(player, !AdaptConfig.get().isEscClosesAllGuis())));
         w.open();
+        Adapt.instance.getGuiLeftovers().put(player.getUniqueId().toString(), w);
     }
 
     private void onGuiClose(Player player, boolean openPrevGui) {
