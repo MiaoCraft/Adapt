@@ -179,6 +179,58 @@
     "challenge_excavate_5m": {
       "title": "Mįslingas Ekskavatoristas",
       "description": "Iškaskite 5,000,000 Blokų"
+    },
+    "horrible_person": {
+      "title": "Jūs Esate Siaubingas Žmogus",
+      "description": "Nesuvokiama, tikrai"
+    },
+    "challenge_turtle_egg_smasher": {
+      "title": "Vėžlio kiaušinių daužytojas!",
+      "description": "Sudaužykite 100 vėžlio kiaušinių"
+    },
+    "challenge_turtle_egg_annihilator": {
+      "title": "Vėžlio kiaušinių naikintojas!",
+      "description": "Sudaužykite 500 vėžlių kiaušinius"
+    },
+    "challenge_novice_hunter": {
+      "title": "Naujokų medžiotojas!",
+      "description": "Nužudykite 100 subjektų"
+    },
+    "challenge_intermediate_hunter": {
+      "title": "Vidutinio lygio medžiotojas!",
+      "description": "Nužudykite 500 subjektų"
+    },
+    "challenge_advanced_hunter": {
+      "title": "Pažangus medžiotojas!",
+      "description": "Nužudykite 5000 subjektų"
+    },
+    "challenge_creeper_conqueror": {
+      "title": "Kryperio Užkariautojas!",
+      "description": "Nužudykite 50 kryperius"
+    },
+    "challenge_creeper_annihilator": {
+      "title": "Kryperių Naikintojas!",
+      "description": "Nužudykite 200 kryperių"
+    },
+    "challenge_pickaxe_1k": {
+      "title": "Pradedantysis Kalnakasys",
+      "description": "Sugriaukite 1000 Blokų"
+    },
+    "challenge_pickaxe_5k": {
+      "title": "Įgudęs kalnakasys",
+      "description": "Sugriaukite 5000 Blokų"
+    },
+    "challenge_pickaxe_50k": {
+      "title": "Ekspertas Kalnakasys",
+      "description": "Sugriaukite 50 000 Blokų"
+    },
+    "challenge_pickaxe_500k": {
+      "title": "Meistras Kalnakasys",
+      "description": "Sugriaukite 500 000 Blokų"
+    },
+    "challenge_pickaxe_5m": {
+      "title": "Legendinis Kalnakasys",
+      "description": "Sugriauti 5 000 000 000 Blokus"
     }
   },
   "items": {
@@ -218,7 +270,7 @@
       "unlearnedall": "Viskas pamiršta"
     },
     "adaptmenu": {
-      "maynotunlearn": "JŪS GALBŪT NEGALĖSITE PAMIRŠTI",
+      "maynotunlearn": "JŪS NEGALĖSITE PAMIRŠTI",
       "mayunlearn": "GALITE IŠMOKTI/PAMIRŠTI",
       "knowledgecost": "Žinių kaina",
       "knowledgeavailable": "Žinia Prieinama",
@@ -316,7 +368,7 @@
       "description": "Iš paties pragaro gelmių."
     },
     "pickaxe": {
-      "name": "Angliakasys",
+      "name": "Kalnakasys",
       "icon": "⛏",
       "description": "Visa kūrinija yra kasykla, o kiekvienas žmogus yra kalnakasys."
     },
@@ -575,6 +627,14 @@
       "description": "Gamindami gaukite pasyvų XP",
       "lore1": "Gaukite XP gamindami"
     },
+    "reconstruction": {
+      "name": "Rūdų Rekonstrukcija",
+      "description": "Perdirbkite rūdas iš jų bazinių komponentų!",
+      "lore1": "8 dropai ir 1 priimantis = 1 rūda (beformė)",
+      "lore2": "Dropai turi būti išlydyti (jei taikoma)",
+      "lore3": "Neįskaitant: Neįskaitant atraižų, kvarco, smaragdų ir kt.",
+      "lore4": "Šeimininkas = Apgaubas, t. y.: Akmuo, Neterio Akmuo, Gilakemnis."
+    },
     "leather": {
       "name": "Gaminama Oda",
       "description": "Oda gaminama iš supuvusios mėsos",
@@ -661,6 +721,13 @@
       "lore1": "Gaukite greita kasimą kasant",
       "lore2": "x Greito kasimo lygiai, kai pradedate kasti bet kokį bloką."
     },
+    "spelunker": {
+      "name": "Super-Žiūrovas Spelunkeris!",
+      "description": "Žiūrėkite į rūdas pro žemę!",
+      "lore1": "Rūda laikykite rankose, o Švytinčias uogas laikykite pagrindinėje rankoje ir \"Sneak'ink\"!",
+      "lore2": "Blokų diapazonas:",
+      "lore3": "Naudojant sunaudoja švytinčias uogas"
+    },
     "droptoinventory": {
       "name": "Kastuvo Trauka"
     },
@@ -702,7 +769,7 @@
     "cobweb": {
       "name": "Voratinklių Kūrėjas",
       "description": "Suteikia galimybę kurti voratinklius darbastalyje",
-      "lore1": "Keturi siūlai, sukurs voratinklį."
+      "lore1": "Devyni siūlai pagamins voratinklį."
     },
     "mushroomblocks": {
       "name": "Grybų Gamintojas",
@@ -825,6 +892,11 @@
       "lore1": "galimybė paneigti vytimą (vienam luitui).",
       "lore2": "Pasyvus: Nederito šarvų dėvėjimas turi galimybę panaikinti ",
       "lore3": "vytimą."
+    },
+    "fireresist": {
+      "name": "Atsparumas Ugniai",
+      "description": "Atsparus ugniai, nes sukietina odą.",
+      "lore1": "galimybė paneigti deginimo efektą!"
     }
   },
   "pickaxe": {
@@ -857,7 +929,8 @@
     "arrowrecovery": {
       "name": "Strėlės Susigrąžinimas",
       "description": "Atgaukite strėles po to, kai nužudėte priešą.",
-      "lore1": "Galimybė susigrąžinti strėles ant smūgio/nužudymo"
+      "lore1": "Galimybė susigrąžinti strėles ant smūgio/nužudymo",
+      "lore2": "Šansas:"
     },
     "webshot": {
       "name": "Voratinklių Spąstai",
@@ -904,6 +977,12 @@
       "description": "Atidarykite enderio skrynią kairiuoju pelės mygtuku, laikydami jį rankoje.",
       "lore1": "Spauskite ant Enderio Skrynios rankoje, kad atidarytumėte (dėti nereikia)"
     },
+    "descent": {
+      "name": "Anti-Levitacija",
+      "description": "Ar pavargote būti įstrigę ore? Šis įgūdis kaip tik jums!",
+      "lore1": "Tiesiog sneak'inkite, kad nusileistumėte, ir krisite mažesniu nei įprasta greičiu!",
+      "lore2": "Užšaldymas:"
+    },
     "gate": {
       "name": "Slėnio Vartai",
       "description": "Teleportuokites į pažymėtą vietą.",
@@ -923,7 +1002,7 @@
     "oxygen": {
       "name": "Organinis Deguonies Bakas",
       "description": "Sulaikykite daugiau deguonies savo mažuose plaučiuose!",
-      "lore1": "Deguonies"
+      "lore1": "Deguonies Talpos Padidėjimas"
     },
     "fishersfantasy": {
       "name": "Fišerio Fantazija",
@@ -1018,6 +1097,27 @@
       "name": "Spygliai",
       "description": "Atmuškite žalą savo užpuolikui!",
       "lore1": "Atkeršyja atgal, kai užpuola"
+    },
+    "globe": {
+      "name": "Skausmo Rutulys",
+      "description": "Padalykite padarytą žalą pagal aplink jus esančių priešų skaičių!",
+      "lore1": "Kuo daugiau priešų aplink jus, tuo mažiau žalos darote kiekvienam iš jų.",
+      "lore2": "Diapazonas:",
+      "lore3": "Pridėta žala visiems subjektams: "
+    },
+    "healing": {
+      "name": "Skausmo Valia",
+      "description": "Atkurkite sveikatą pagal padarytą žalą!",
+      "lore1": "Žaloti dalykus dar niekada nebuvo taip gerai! Gydymas nuo padarytos žalos",
+      "lore2": "Yra 3 sekundžių žalos langas, gydymo ir 1 sekundės užšaldymas. ",
+      "lore3": "Gydymas pagal žalos procentą: "
+    },
+    "lance": {
+      "name": "Lavonų Ietys",
+      "description": "Nužudžius priešą arba atlikus gebėjimą nužudyti priešą, atsiranda ietis, daranti žalą netoliese esančiam priešui!",
+      "lore1": "Iš bet ko, ką nužudysite, ir jei šis gebėjimas nužudys priešą, bus ieškoma ieties.",
+      "lore2": "Paaukokite dalį savo gyvybės, kad sukurtumėte ietis (tai gali jus nužudyti).",
+      "lore3": "Max Ietys: 1 + "
     }
   },
   "unarmed": {

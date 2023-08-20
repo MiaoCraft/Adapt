@@ -83,14 +83,15 @@ public class ArchitectFoundation extends SimpleAdaptation<ArchitectFoundation.Co
         if (!hasAdaptation(p)) {
             return;
         }
+        if (!canBlockPlace(p, p.getLocation())) {
+            return;
+        }
         if (!e.getFrom().getBlock().equals(e.getTo().getBlock())) {
             return;
         }
-
         if (!this.active.contains(p)) {
             return;
         }
-
         int power = blockPower.get(p);
 
         if (power <= 0) {
@@ -107,7 +108,6 @@ public class ArchitectFoundation extends SimpleAdaptation<ArchitectFoundation.Co
 
         for (Block b : locs) {
             if (addFoundation(b)) {
-                xp(p, 3);
                 power--;
             }
 
@@ -214,8 +214,8 @@ public class ArchitectFoundation extends SimpleAdaptation<ArchitectFoundation.Co
         block.getWorld().playSound(block.getLocation(), Sound.BLOCK_DEEPSLATE_PLACE, 1.0f, 1.0f);
         if (getConfig().showParticles) {
 
-            vfxSingleCubeOutline(block, Particle.REVERSE_PORTAL);
-            vfxSingleCubeOutline(block, Particle.ASH);
+            vfxCuboidOutline(block, Particle.REVERSE_PORTAL);
+            vfxCuboidOutline(block, Particle.ASH);
         }
         J.a(() -> removeFoundation(block), 3 * 20);
         return true;
@@ -232,7 +232,7 @@ public class ArchitectFoundation extends SimpleAdaptation<ArchitectFoundation.Co
         });
         block.getWorld().playSound(block.getLocation(), Sound.BLOCK_DEEPSLATE_BREAK, 1.0f, 1.0f);
         if (getConfig().showParticles) {
-            vfxSingleCubeOutline(block, Particle.ENCHANTMENT_TABLE);
+            vfxCuboidOutline(block, Particle.ENCHANTMENT_TABLE);
         }
     }
 

@@ -19,38 +19,39 @@
 package com.volmit.adapt.content.adaptation.rift;
 
 import com.volmit.adapt.Adapt;
+import com.volmit.adapt.AdaptConfig;
 import com.volmit.adapt.api.adaptation.SimpleAdaptation;
 import com.volmit.adapt.api.recipe.AdaptRecipe;
 import com.volmit.adapt.content.item.BoundEnderPearl;
-import com.volmit.adapt.nms.NMS;
 import com.volmit.adapt.util.C;
 import com.volmit.adapt.util.Element;
 import com.volmit.adapt.util.J;
 import com.volmit.adapt.util.Localizer;
 import lombok.NoArgsConstructor;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.potion.PotionEffectType;
 import us.lynuxcraft.deadsilenceiv.advancedchests.AdvancedChestsAPI;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.volmit.adapt.api.adaptation.chunk.ChunkLoading.loadChunkAsync;
 
 public class RiftAccess extends SimpleAdaptation<RiftAccess.Config> {
-    private final List<InventoryView> activeViews = new ArrayList<>();
+    private final Map<Location, List<InventoryView>> activeViewsMap = new ConcurrentHashMap<>();
+
 
     public RiftAccess() {
         super("rift-access");
@@ -62,7 +63,7 @@ public class RiftAccess extends SimpleAdaptation<RiftAccess.Config> {
         setBaseCost(getConfig().baseCost);
         setCostFactor(getConfig().costFactor);
         setInitialCost(getConfig().initialCost);
-        setInterval(5544);
+        setInterval(1000);
         registerRecipe(AdaptRecipe.shapeless()
                 .key("rift-remote-access")
                 .ingredient(Material.ENDER_PEARL)
@@ -78,54 +79,69 @@ public class RiftAccess extends SimpleAdaptation<RiftAccess.Config> {
         v.addLore(C.ITALIC + Localizer.dLocalize("rift", "remoteaccess", "lore3"));
     }
 
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void on(PlayerInteractEvent e) {
         Player p = e.getPlayer();
-        ItemStack hand = p.getInventory().getItemInMainHand();
+        ItemStack mainHand = p.getInventory().getItemInMainHand();
+        ItemStack offHand = p.getInventory().getItemInOffHand();
         Block block = e.getClickedBlock();
-        ItemStack offhand = p.getInventory().getItemInOffHand();
-        if (e.getHand() != null && e.getHand().equals(EquipmentSlot.OFF_HAND) && BoundEnderPearl.isBindableItem(offhand)) {
+
+        boolean mainHandBound = BoundEnderPearl.isBindableItem(mainHand);
+        boolean offHandBound = BoundEnderPearl.isBindableItem(offHand);
+
+        // Cancel event if the enderpearl is in the offhand
+        if (offHandBound && e.getHand() != null && e.getHand().equals(EquipmentSlot.OFF_HAND)) {
             e.setCancelled(true);
             return;
         }
-        if (BoundEnderPearl.isBindableItem(hand) && hasAdaptation(p)) {
+
+        // If the main hand is holding a bound enderpearl
+        if (mainHandBound) {
             e.setCancelled(true);
-            switch (e.getAction()) {
-                case LEFT_CLICK_BLOCK -> {
-                    if (isStorage(block.getBlockData())) { // Ensure its a container
-                        if (p.isSneaking()) { // Binding (Sneak Container)
-                            if (canAccessChest(p, block.getLocation())) {
-                                linkPearl(p, block);
-                            } else {
-                                Adapt.verbose("Player " + p.getName() + " doesn't have permission.");
-                            }
-                        }
-                    } else if (!isStorage(block.getBlockData())) {
-                        if (p.isSneaking()) { //(Sneak NOT Container)
-                            Adapt.messagePlayer(p, C.LIGHT_PURPLE + Localizer.dLocalize("rift", "remoteaccess", "notcontainer"));
-                        }
-                    }
-                }
-                case RIGHT_CLICK_AIR, RIGHT_CLICK_BLOCK -> {
-                    if (p.hasCooldown(hand.getType())) {
-                        return;
-                    } else {
-                        NMS.get().sendCooldown(p, Material.ENDER_PEARL, 100);
-                        p.setCooldown(Material.ENDER_PEARL, 100);
-                    }
-                    if (isBound(hand)) {
-                        openPearl(p);
-                    }
-                }
+            if (hasAdaptation(p)) {
+                Adapt.verbose("Player using bound enderpearl.");
+                handleEnderPearlInteraction(e, p, block);
             }
-        } else if (BoundEnderPearl.isBindableItem(hand)) {
-            e.setCancelled(true);
         }
     }
 
-    private void linkPearl(Player p, Block block) {
+    private void handleEnderPearlInteraction(PlayerInteractEvent event, Player player, Block block) {
+        boolean canUseInCreative = AdaptConfig.get().allowAdaptationsInCreative;
+        boolean isCreative = player.getGameMode() == GameMode.CREATIVE;
+        boolean sneaking = player.isSneaking();
+        boolean allowed = canUseInCreative || !isCreative;
+
+
+        // Check if the player is allowed to use the bound item in creative
+        if (!allowed) {
+            Adapt.info("Player " + player.getName() + " tried to use the bound item in creative mode.");
+            return;
+        }
+
+        switch (event.getAction()) {
+            case LEFT_CLICK_BLOCK -> {
+                // If player is sneaking and left-clicking a container
+                if (sneaking && isStorage(block.getBlockData())) {
+                    if (canAccessChest(player, block.getLocation())) {
+                        linkPearl(player, block, event);
+                    } else {
+                        Adapt.verbose("Player " + player.getName() + " doesn't have permission.");
+                    }
+                }
+            }
+            case RIGHT_CLICK_AIR, RIGHT_CLICK_BLOCK ->
+                // If player right-clicks on air or any block
+                    openPearl(player);
+            default -> {
+            }
+        }
+    }
+
+    private void linkPearl(Player p, Block block, PlayerInteractEvent event) {
+        event.setCancelled(true);
         if (getConfig().showParticles) {
-            vfxSingleCubeOutline(block, Particle.REVERSE_PORTAL);
+            vfxCuboidOutline(block, Particle.REVERSE_PORTAL);
         }
         ItemStack hand = p.getInventory().getItemInMainHand();
         p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_CLOSE, 0.5f, 0.8f);
@@ -150,42 +166,101 @@ public class RiftAccess extends SimpleAdaptation<RiftAccess.Config> {
                     AdvancedChestsAPI.getChestManager().getAdvancedChest(b.getLocation()) != null) {
                 AdvancedChestsAPI.getChestManager().getAdvancedChest(b.getLocation()).openPage(p, 1);
                 Adapt.verbose("Opening AdvancedChests GUI");
-                p.playSound(p.getLocation(), Sound.PARTICLE_SOUL_ESCAPE, 1f, 0.10f);
-                p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1f, 0.10f);
             } else if (b.getState() instanceof InventoryHolder holder) {
-                activeViews.add(p.openInventory(holder.getInventory()));
-                p.playSound(p.getLocation(), Sound.PARTICLE_SOUL_ESCAPE, 1f, 0.10f);
-                p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1f, 0.10f);
+                InventoryView view = p.openInventory(holder.getInventory());
+                activeViewsMap.computeIfAbsent(b.getLocation(), k -> new ArrayList<>()).add(view);
             }
+            p.playSound(p.getLocation(), Sound.PARTICLE_SOUL_ESCAPE, 1f, 0.10f);
+            p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1f, 0.10f);
         });
-    }
-
-    private boolean isBound(ItemStack stack) {
-        return (stack.getType().equals(Material.ENDER_PEARL) && BoundEnderPearl.getBlock(stack) != null);
     }
 
     @Override
     public void onTick() {
-        if (!this.isEnabled()) {
-            return;
-        }
-        J.s(() -> {
-            for (int ii = activeViews.size() - 1; ii >= 0; ii--) {
-                InventoryView i = activeViews.get(ii);
-
-                if (i.getPlayer().getOpenInventory().equals(i)) {
-                    if (i.getTopInventory().getLocation() == null || !isStorage(i.getTopInventory().getLocation().getBlock().getBlockData())) {
-                        i.getPlayer().closeInventory();
-                        i.getPlayer().removePotionEffect(PotionEffectType.BLINDNESS);
-                        activeViews.remove(ii);
-                    }
-                } else {
-                    i.getPlayer().removePotionEffect(PotionEffectType.BLINDNESS);
-                    activeViews.remove(ii);
-                }
-            }
-        });
+        J.s(this::checkActiveViews);
     }
+
+    private void checkActiveViews() {
+        Iterator<Map.Entry<Location, List<InventoryView>>> mapIterator = activeViewsMap.entrySet().iterator();
+        while (mapIterator.hasNext()) {
+            Map.Entry<Location, List<InventoryView>> entry = mapIterator.next();
+            removeInvalidViews(entry);
+            removeEntryIfViewsEmpty(mapIterator, entry);
+        }
+    }
+
+    private void removeInvalidViews(Map.Entry<Location, List<InventoryView>> entry) {
+        List<InventoryView> views = entry.getValue();
+        for (int ii = views.size() - 1; ii >= 0; ii--) {
+            InventoryView i = views.get(ii);
+            if (shouldRemoveView(i)) {
+                views.remove(ii);
+            }
+        }
+    }
+
+    private boolean shouldRemoveView(InventoryView i) {
+        Location location = i.getTopInventory().getLocation();
+        return !i.getPlayer().getOpenInventory().equals(i) || (location == null || !isStorage(location.getBlock().getBlockData()));
+    }
+
+    private void removeEntryIfViewsEmpty(Iterator<Map.Entry<Location, List<InventoryView>>> mapIterator, Map.Entry<Location, List<InventoryView>> entry) {
+        List<InventoryView> views = entry.getValue();
+        if (views.isEmpty()) {
+            mapIterator.remove();
+        }
+    }
+
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void on(BlockBurnEvent event) {
+        if (event.isCancelled()) return;
+        invClose(event.getBlock());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void on(BlockPistonRetractEvent event) {
+        if (event.isCancelled()) return;
+        for (Block b : event.getBlocks()) {
+            invClose(b);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void on(BlockPistonExtendEvent event) {
+        if (event.isCancelled()) return;
+        for (Block b : event.getBlocks()) {
+            invClose(b);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void on(BlockExplodeEvent event) {
+        if (event.isCancelled()) return;
+        for (Block b : event.blockList()) {
+            invClose(b);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void on(BlockBreakEvent event) {
+        if (event.isCancelled()) return;
+        invClose(event.getBlock());
+    }
+
+
+    private void invClose(Block block) {
+        List<InventoryView> views = activeViewsMap.get(block.getLocation());
+        if (views != null) {
+            for (InventoryView view : views) {
+                view.getPlayer().closeInventory();
+            }
+            activeViewsMap.remove(block.getLocation());
+        }
+    }
+
+
+
 
     @Override
     public boolean isEnabled() {
@@ -206,5 +281,4 @@ public class RiftAccess extends SimpleAdaptation<RiftAccess.Config> {
         double costFactor = 0.2;
         int initialCost = 15;
     }
-
 }

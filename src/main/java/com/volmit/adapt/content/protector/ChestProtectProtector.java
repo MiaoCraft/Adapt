@@ -5,7 +5,7 @@ import com.volmit.adapt.AdaptConfig;
 import com.volmit.adapt.api.adaptation.Adaptation;
 import com.volmit.adapt.api.protection.Protector;
 import me.angeschossen.chestprotect.api.addons.ChestProtectAddon;
-import me.angeschossen.chestprotect.api.objects.BlockProtection;
+import me.angeschossen.chestprotect.api.protection.block.BlockProtection;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 

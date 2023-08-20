@@ -35,15 +35,19 @@ public class SkillsGui {
         Window w = new UIWindow(player);
         w.setTag("/");
         w.setDecorator((window, position, row) -> new UIElement("bg")
-                .setName("")
+                .setName(" ")
                 .setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
 
         AdaptPlayer adaptPlayer = Adapt.instance.getAdaptServer().getPlayer(player);
         int ind = 0;
+        if (adaptPlayer == null) {
+            Adapt.error("Failed to open skills gui for " + player.getName() + " because they are not Online, Were Kicked, Or are a fake player.");
+            return;
+        }
 
         if (adaptPlayer.getData().getSkillLines().size() > 0) {
             for (PlayerSkillLine i : adaptPlayer.getData().getSkillLines().sortV()) {
-                if (i.getLevel() < 0) {
+                if (i.getRawSkill(adaptPlayer).hasBlacklistPermission(adaptPlayer.getPlayer(), i.getRawSkill(adaptPlayer)) || i.getLevel() < 0) {
                     continue;
                 }
                 int pos = w.getPosition(ind);
@@ -75,7 +79,7 @@ public class SkillsGui {
                                 ? " " + C.DARK_RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "norefunds")
                                 : ""))
                         .onLeftClick((e) -> {
-                            Adapt.instance.getAdaptServer().getSkillRegistry().getSkills().forEach(skill -> skill.getAdaptations().forEach(adaptation -> adaptation.unlearn(player, 1)));
+                            Adapt.instance.getAdaptServer().getSkillRegistry().getSkills().forEach(skill -> skill.getAdaptations().forEach(adaptation -> adaptation.unlearn(player, 1, false)));
                             player.getWorld().playSound(player.getLocation(), Sound.BLOCK_NETHER_GOLD_ORE_PLACE, 0.7f, 1.355f);
                             player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 0.4f, 0.755f);
                             w.close();

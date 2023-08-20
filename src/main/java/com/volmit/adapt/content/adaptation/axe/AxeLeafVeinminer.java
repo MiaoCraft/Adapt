@@ -18,7 +18,6 @@
 
 package com.volmit.adapt.content.adaptation.axe;
 
-import com.volmit.adapt.Adapt;
 import com.volmit.adapt.api.adaptation.SimpleAdaptation;
 import com.volmit.adapt.util.C;
 import com.volmit.adapt.util.Element;
@@ -36,9 +35,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class AxeLeafVeinminer extends SimpleAdaptation<AxeLeafVeinminer.Config> {
     public AxeLeafVeinminer() {
@@ -88,22 +85,19 @@ public class AxeLeafVeinminer extends SimpleAdaptation<AxeLeafVeinminer.Config> 
             if (isLeaves(new ItemStack(e.getBlock().getType()))) {
                 Block block = e.getBlock();
                 Map<Location, Block> blockMap = new HashMap<>();
-                blockMap.put(block.getLocation(), block);
-
-                for (int i = 0; i < getRadius(getLevel(p)); i++) {
-                    for (int x = -i; x <= i; x++) {
-                        for (int y = -i; y <= i; y++) {
-                            for (int z = -i; z <= i; z++) {
-                                Block b = block.getRelative(x, y, z);
-                                if (b.getType() == block.getType()) {
-                                    if (block.getLocation().distance(b.getLocation()) > getRadius(getLevel(p))) {
-                                        continue;
-                                    }
-                                    if (!canBlockBreak(p, b.getLocation())) {
-                                        Adapt.verbose("Player " + p.getName() + " doesn't have permission.");
-                                        continue;
-                                    }
-                                    blockMap.put(b.getLocation(), b);
+                Deque<Block> stack = new LinkedList<>();
+                stack.push(block);
+                int radius = getRadius(getLevel(p));
+                while (!stack.isEmpty() && blockMap.size() < radius) {
+                    Block currentBlock = stack.pop();
+                    if (blockMap.containsKey(currentBlock.getLocation())) continue;
+                    blockMap.put(currentBlock.getLocation(), currentBlock);
+                    for (int x = -1; x <= 1; x++) {
+                        for (int y = -1; y <= 1; y++) {
+                            for (int z = -1; z <= 1; z++) {
+                                Block b = currentBlock.getRelative(x, y, z);
+                                if (b.getType() == block.getType() && currentBlock.getLocation().distance(b.getLocation()) <= radius && canBlockBreak(p, b.getLocation())) {
+                                    stack.push(b);
                                 }
                             }
                         }
@@ -113,12 +107,10 @@ public class AxeLeafVeinminer extends SimpleAdaptation<AxeLeafVeinminer.Config> 
                 J.s(() -> {
                     for (Location l : blockMap.keySet()) {
                         Block b = e.getBlock().getWorld().getBlockAt(l);
-                        xp(p, 3);
                         if (getPlayer(p).getData().getSkillLines() != null && getPlayer(p).getData().getSkillLines().get("axes").getAdaptations() != null && getPlayer(p).getData().getSkillLines().get("axes").getAdaptations().get("axe-drop-to-inventory") != null && getPlayer(p).getData().getSkillLines().get("axes").getAdaptations().get("axe-drop-to-inventory").getLevel() > 0) {
                             Collection<ItemStack> items = e.getBlock().getDrops();
                             for (ItemStack i : items) {
                                 p.playSound(p.getLocation(), Sound.BLOCK_CALCITE_HIT, 0.01f, 0.01f);
-                                xp(p, 2);
                                 HashMap<Integer, ItemStack> extra = p.getInventory().addItem(i);
                                 if (!extra.isEmpty()) {
                                     p.getWorld().dropItem(p.getLocation(), extra.get(0));
@@ -133,7 +125,7 @@ public class AxeLeafVeinminer extends SimpleAdaptation<AxeLeafVeinminer.Config> 
                             }
                         }
                         if (getConfig().showParticles) {
-                            vfxSingleCubeOutlineR(b, Particle.ENCHANTMENT_TABLE);
+                            this.vfxCuboidOutline(b, Particle.ENCHANTMENT_TABLE);
                         }
                     }
                 });
@@ -158,8 +150,8 @@ public class AxeLeafVeinminer extends SimpleAdaptation<AxeLeafVeinminer.Config> 
         boolean showParticles = true;
         int baseCost = 6;
         int maxLevel = 5;
-        int initialCost = 4;
-        double costFactor = 2.325;
+        int initialCost = 1;
+        double costFactor = 0.325;
         int baseRange = 5;
     }
 }

@@ -59,6 +59,7 @@ public class ExcavationDropToInventory extends SimpleAdaptation<ExcavationDropTo
         v.addLore(C.GRAY + Localizer.dLocalize("pickaxe", "droptoinventory", "lore1"));
     }
 
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void on(BlockDropItemEvent e) {
         if (e.isCancelled()) {
@@ -69,6 +70,12 @@ public class ExcavationDropToInventory extends SimpleAdaptation<ExcavationDropTo
             return;
         }
         if (p.getGameMode() != GameMode.SURVIVAL) {
+            return;
+        }
+        if (!canInteract(p, e.getBlock().getLocation())) {
+            return;
+        }
+        if (!canBlockBreak(p, e.getBlock().getLocation())) {
             return;
         }
         if (ItemListings.toolShovels.contains(p.getInventory().getItemInMainHand().getType())) {

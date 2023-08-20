@@ -77,6 +77,7 @@ public interface Adaptation<T> extends Ticked, Component {
     }
 
     default boolean canUse(AdaptPlayer player) {
+        Adapt.verbose("Checking if " + player.getPlayer().getName() + " can use " + getName() + "...");
         AdaptAdaptationUseEvent e = new AdaptAdaptationUseEvent(!Bukkit.isPrimaryThread(), player, this);
         Bukkit.getServer().getPluginManager().callEvent(e);
         return (!e.isCancelled());
@@ -86,6 +87,15 @@ public interface Adaptation<T> extends Ticked, Component {
         return canUse(getPlayer(player));
     }
 
+    default boolean hasBlacklistPermission(Player p, Adaptation a) {
+        if (p.isOp()) { // If the player is an operator, bypass the permission check
+            return false;
+        }
+        String blacklistPermission = "adapt.blacklist." + a.getName().replaceAll("-", "");
+        Adapt.verbose("Checking if player " + p.getName() + " has blacklist permission " + blacklistPermission);
+
+        return p.hasPermission(blacklistPermission);
+    }
 
     default String getStorageString(Player p, String key, String defaultValue) {
         return getStorage(p, key, defaultValue);
@@ -235,6 +245,15 @@ public interface Adaptation<T> extends Ticked, Component {
                     Adapt.verbose("Player " + p.getName() + " don't have adaptation - " + this.getName() + " permission.");
                     return false;
                 }
+
+                if (hasBlacklistPermission(p, this)) {
+                    Adapt.verbose("Player " + p.getName() + " has blacklist permission for adaptation " + this.getName());
+                    return false;
+                }
+                if (!canUse(p)) {
+                    Adapt.verbose("Player " + p.getName() + " can't use adaptation, This is an API restriction" + this.getName());
+                    return false;
+                }
                 Adapt.verbose("Player " + p.getName() + " used adaptation " + this.getName());
                 return true;
             } else {
@@ -355,13 +374,22 @@ public interface Adaptation<T> extends Ticked, Component {
         return targetBlock.getFace(adjacentBlock);
     }
 
+    default boolean openGui(Player player, boolean checkPermissions) {
+        if (hasBlacklistPermission(player, this)) {
+            return false;
+        } else {
+            openGui(player);
+            return true;
+        }
+    }
+
     default void openGui(Player player) {
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1.1f, 1.255f);
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 0.655f);
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.3f, 0.855f);
         Window w = new UIWindow(player);
         w.setTag("skill/" + getSkill().getName() + "/" + getName());
-        w.setDecorator((window, position, row) -> new UIElement("bg").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
+        w.setDecorator((window, position, row) -> new UIElement("bg").setName(" ").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
         w.setResolution(WindowResolution.W9_H6);
         int o = 0;
 
@@ -403,7 +431,7 @@ public interface Adaptation<T> extends Ticked, Component {
                     .addLore((isPermanent() ? C.RED + "" + C.BOLD + Localizer.dLocalize("snippets", "adaptmenu", "maynotunlearn") : ""))
                     .onLeftClick((e) -> {
                         if (mylevel >= lvl) {
-                            unlearn(player, lvl);
+                            unlearn(player, lvl, false);
 
                             player.getWorld().playSound(player.getLocation(), Sound.BLOCK_NETHER_GOLD_ORE_PLACE, 0.7f, 1.355f);
                             player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 0.4f, 0.755f);
@@ -476,20 +504,27 @@ public interface Adaptation<T> extends Ticked, Component {
         }
     }
 
-    default void unlearn(Player player, int lvl) {
-        if (isPermanent()) {
-            //todo message that this is permanent
+    default void unlearn(Player player, int lvl, boolean force) {
+        if (isPermanent() && !force) {
             return;
         }
-        int mylevel = getPlayer(player).getSkillLine(getSkill().getName()).getAdaptationLevel(getName());
-        int rc = getRefundCostFor(lvl - 1, mylevel);
-
+        int myLevel = getPlayer(player).getSkillLine(getSkill().getName()).getAdaptationLevel(getName());
+        int rc = getRefundCostFor(lvl - 1, myLevel);
         if (!AdaptConfig.get().isHardcoreNoRefunds()) {
             getPlayer(player).getData().getSkillLine(getSkill().getName()).giveKnowledge(rc);
         }
         getPlayer(player).getData().getSkillLine(getSkill().getName()).setAdaptation(this, lvl - 1);
     }
 
+    default void learn(Player player, int lvl, boolean force) {
+        int myLevel = getPlayer(player).getSkillLine(getSkill().getName()).getAdaptationLevel(getName());
+        int c = getCostFor(lvl, myLevel);
+        if (getPlayer(player).getData().hasPowerAvailable(c) || force) {
+            if (getPlayer(player).getData().getSkillLine(getSkill().getName()).spendKnowledge(c) || force) {
+                getPlayer(player).getData().getSkillLine(getSkill().getName()).setAdaptation(this, lvl);
+            }
+        }
+    }
 
     default boolean isAdaptationRecipe(Recipe recipe) {
         if (!this.getSkill().isEnabled()) {
@@ -500,7 +535,6 @@ public interface Adaptation<T> extends Ticked, Component {
                 return true;
             }
         }
-
         return false;
     }
 }

@@ -96,6 +96,15 @@ public interface Skill<T> extends Ticked, Component {
 
     void onRegisterAdvancements(List<AdaptAdvancement> advancements);
 
+    default boolean hasBlacklistPermission(Player p, Skill s) {
+        if (p.isOp()) { // If the player is an operator, bypass the permission check
+            return false;
+        }
+        String blacklistPermission = "adapt.blacklist." + s.getName().replaceAll("-", "");
+        Adapt.verbose("Checking if player " + p.getName() + " has blacklist permission " + blacklistPermission);
+        return p.hasPermission(blacklistPermission);
+    }
+
     default String getDisplayName() {
         if (!this.isEnabled()) {
             this.unregister();
@@ -177,6 +186,15 @@ public interface Skill<T> extends Ticked, Component {
         XP.knowledge(p, this, k);
     }
 
+    default boolean openGui(Player player, boolean checkPermissions) {
+        if (hasBlacklistPermission(player, this)) {
+            return false;
+        } else {
+            openGui(player);
+            return true;
+        }
+    }
+
     default void openGui(Player player) {
         if (!this.isEnabled()) {
             this.unregister();
@@ -189,11 +207,14 @@ public interface Skill<T> extends Ticked, Component {
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.3f, 1.855f);
         Window w = new UIWindow(player);
         w.setTag("skill/" + getName());
-        w.setDecorator((window, position, row) -> new UIElement("bg").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
+        w.setDecorator((window, position, row) -> new UIElement("bg").setName(" ").setMaterial(new MaterialBlock(Material.BLACK_STAINED_GLASS_PANE)));
 
         int ind = 0;
 
         for (Adaptation i : getAdaptations()) {
+            if (i.hasBlacklistPermission(player, i)) {
+                continue;
+            }
             int pos = w.getPosition(ind);
             int row = w.getRow(ind);
             int lvl = getPlayer(player).getData().getSkillLine(getName()).getAdaptationLevel(i.getName());
@@ -206,7 +227,6 @@ public interface Skill<T> extends Ticked, Component {
                     .onLeftClick((e) -> {
                         w.close();
                         i.openGui(player);
-
                     }));
             ind++;
         }

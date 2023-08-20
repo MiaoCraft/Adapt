@@ -25,22 +25,26 @@ import com.volmit.adapt.api.protection.ProtectorRegistry;
 import com.volmit.adapt.api.tick.Ticker;
 import com.volmit.adapt.api.value.MaterialValue;
 import com.volmit.adapt.api.world.AdaptServer;
-import com.volmit.adapt.commands.CommandAdapt;
+import com.volmit.adapt.command.CommandAdapt;
 import com.volmit.adapt.content.gui.SkillsGui;
-import com.volmit.adapt.content.protector.ChestProtectProtector;
-import com.volmit.adapt.content.protector.FactionsClaimProtector;
-import com.volmit.adapt.content.protector.ResidenceProtector;
-import com.volmit.adapt.content.protector.WorldGuardProtector;
+import com.volmit.adapt.content.protector.*;
+import com.volmit.adapt.nms.GlowingEntities;
 import com.volmit.adapt.nms.NMS;
 import com.volmit.adapt.util.*;
+import com.volmit.adapt.util.command.*;
+import com.volmit.adapt.util.command.suggest.*;
 import com.volmit.adapt.util.secret.SecretSplash;
 import de.slikey.effectlib.EffectManager;
+import io.github.mqzn.commands.SpigotCommandManager;
+import io.github.mqzn.commands.annotations.AnnotationParser;
+import io.github.mqzn.commands.base.manager.CommandExecutionCoordinator;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -49,6 +53,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -57,12 +62,14 @@ import java.util.UUID;
 public class Adapt extends VolmitPlugin {
     public static Adapt instance;
     public static HashMap<String, String> wordKey = new HashMap<>();
-    public static HashMap<String, String> wordKeyOverride = new HashMap<>();
-    public static BukkitAudiences audiences;
     public final EffectManager adaptEffectManager = new EffectManager(this);
-    @Command
-    private final CommandAdapt commandAdapt = new CommandAdapt();
-    public boolean usingMagicCosmetics = Bukkit.getServer().getPluginManager().getPlugin("MagicCosmetics") != null;
+    public static BukkitAudiences audiences;
+
+    private SpigotCommandManager commandManager;
+    private AnnotationParser<CommandSender> parser;
+
+    @Getter
+    private GlowingEntities glowingEntities;
     @Getter
     private Ticker ticker;
     @Getter
@@ -76,9 +83,124 @@ public class Adapt extends VolmitPlugin {
     private Map<String, Window> guiLeftovers = new HashMap<>();
 
 
+
+    
+
     public Adapt() {
         super();
         instance = this;
+    }
+
+    @Override
+    public void start() {
+        audiences = BukkitAudiences.create(this);
+        commandManager = new SpigotCommandManager(this, CommandExecutionCoordinator.Type.SYNC);
+        parser = new AnnotationParser<>(commandManager);
+        commandManager.suggestionProviderRegistry().register(new AdaptSkillListingProvider());
+        commandManager.suggestionProviderRegistry().register(new AdaptSkillProvider());
+
+        commandManager.suggestionProviderRegistry().register(new AdaptAdaptationListingProvider());
+        commandManager.suggestionProviderRegistry().register(new AdaptAdaptationProvider());
+
+        commandManager.suggestionProviderRegistry().register(new SoundSuggestionProvider());
+        commandManager.suggestionProviderRegistry().register(new ParticleSuggestionProvider());
+        commandManager.suggestionProviderRegistry().register(new BooleanSuggestionProvider());
+
+        NMS.init();
+        Localizer.updateLanguageFile();
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new PapiExpansion().register();
+        }
+        printInformation();
+        sqlManager = new SQLManager();
+        if (AdaptConfig.get().isUseSql()) {
+            sqlManager.establishConnection();
+        }
+        startSim();
+        registerListener(new BrewingManager());
+        setupMetrics();
+        startupPrint(); // Splash screen
+        if (AdaptConfig.get().isAutoUpdateCheck()) {
+            autoUpdateCheck();
+        }
+        protectorRegistry = new ProtectorRegistry();
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            protectorRegistry.registerProtector(new WorldGuardProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("Factions") != null) {
+            protectorRegistry.registerProtector(new FactionsClaimProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("ChestProtect") != null) {
+            protectorRegistry.registerProtector(new ChestProtectProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("Residence") != null) {
+            protectorRegistry.registerProtector(new ResidenceProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("GriefDefender") != null) {
+            protectorRegistry.registerProtector(new GriefDefenderProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("GriefPrevention") != null) {
+            protectorRegistry.registerProtector(new GriefPreventionProtector());
+        }
+        if (getServer().getPluginManager().getPlugin("LockettePro") != null) {
+            protectorRegistry.registerProtector(new LocketteProProtector());
+        }
+        glowingEntities = new GlowingEntities(this);
+        parser.parse(new CommandAdapt());
+    }
+
+
+    public void startSim() {
+        ticker = new Ticker();
+        adaptServer = new AdaptServer();
+    }
+
+    public void stopSim() {
+        ticker.clear();
+        adaptServer.unregister();
+        MaterialValue.save();
+        WorldData.stop();
+    }
+
+
+    @Override
+    public void stop() {
+        sqlManager.closeConnection();
+        stopSim();
+        protectorRegistry.unregisterAll();
+    }
+
+    private void startupPrint() {
+        if (!AdaptConfig.get().isSplashScreen()) {
+            return;
+        }
+        Random r = new Random();
+        int game = r.nextInt(100);
+        if (game < 90) {
+            Adapt.info("\n" + C.GRAY + " █████" + C.DARK_RED + "╗ " + C.GRAY + "██████" + C.DARK_RED + "╗  " + C.GRAY + "█████" + C.DARK_RED + "╗ " + C.GRAY + "██████" + C.DARK_RED + "╗ " + C.GRAY + "████████" + C.DARK_RED + "╗\n" +
+                    C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗╚══" + C.GRAY + "██" + C.DARK_RED + "╔══╝" + C.WHITE + "         Version: " + C.DARK_RED + instance.getDescription().getVersion() + "     \n" +
+                    C.GRAY + "███████" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "███████" + C.DARK_RED + "║" + C.GRAY + "██████" + C.DARK_RED + "╔╝   " + C.GRAY + "██" + C.DARK_RED + "║" + C.WHITE + "            By: " + C.RED + "A" + C.GOLD + "r" + C.YELLOW + "c" + C.GREEN + "a" + C.DARK_GRAY + "n" + C.AQUA + "e " + C.AQUA + "A" + C.BLUE + "r" + C.DARK_BLUE + "t" + C.DARK_PURPLE + "s" + C.WHITE + " (Volmit Software)\n" +
+                    C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "╔═══╝    " + C.GRAY + "██" + C.DARK_RED + "║" + C.WHITE + "            Java Version: " + C.DARK_RED + getJavaVersion() + "     \n" +
+                    C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██████" + C.DARK_RED + "╔╝" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║        " + C.GRAY + "██" + C.DARK_RED + "║   \n" +
+                    C.DARK_RED + "╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝        ╚═╝   \n");
+        } else {
+            info(SecretSplash.getSecretSplash().getRandom());
+        }
+    }
+
+    public File getJarFile() {
+        return getFile();
+    }
+
+    @Override
+    public String getTag(String subTag) {
+        return C.BOLD + "" + C.DARK_GRAY + "[" + C.BOLD + "" + C.DARK_RED + "Adapt" + C.BOLD + C.DARK_GRAY + "]" + C.RESET + "" + C.GRAY + ": ";
+    }
+
+    private void setupMetrics() {
+        if (AdaptConfig.get().isMetrics()) {
+            new Metrics(this, 13412);
+        }
     }
 
     public static int getJavaVersion() {
@@ -103,27 +225,24 @@ public class Adapt extends VolmitPlugin {
 
     @SneakyThrows
     public static void autoUpdateCheck() {
-        try {
-            URL url = new URL("https://raw.githubusercontent.com/VolmitSoftware/Adapt/main/build.gradle");
-            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-            String inputLine;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(new URL("https://raw.githubusercontent.com/VolmitSoftware/Adapt/main/build.gradle").openStream()))) {
             info("Checking for updates...");
+            String inputLine;
             while ((inputLine = in.readLine()) != null) {
                 if (inputLine.contains("version '")) {
-                    String version = inputLine.remove("version '").remove("'").remove("// Needs to be version specific").remove(" ");
+                    String version = inputLine.replace("version '", "").replace("'", "").replace("// Needs to be version specific", "").replace(" ", "");
                     if (instance.getDescription().getVersion().contains("development")) {
                         info("Development build detected. Skipping update check.");
                         return;
                     } else if (!version.equals(instance.getDescription().getVersion())) {
-                        info("Please update your Adapt plugin to the latest version! (Current: " + instance.getDescription().getVersion() + " Latest: " + version + ")");
+                        info(MessageFormat.format("Please update your Adapt plugin to the latest version! (Current: {0} Latest: {1})", instance.getDescription().getVersion(), version));
                     } else {
                         info("You are running the latest version of Adapt!");
                     }
                     break;
                 }
             }
-            in.close();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             error("Failed to check for updates.");
         }
     }
@@ -215,92 +334,5 @@ public class Adapt extends VolmitPlugin {
             });
 
         }, 20);
-    }
-
-    public void startSim() {
-        ticker = new Ticker();
-        adaptServer = new AdaptServer();
-    }
-
-    public void stopSim() {
-        ticker.clear();
-        adaptServer.unregister();
-        MaterialValue.save();
-        WorldData.stop();
-    }
-
-    @Override
-    public void start() {
-        NMS.init();
-        Localizer.updateLanguageFile();
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PapiExpansion().register();
-        }
-        printInformation();
-        sqlManager = new SQLManager();
-        if (AdaptConfig.get().isUseSql()) {
-            sqlManager.establishConnection();
-        }
-        startSim();
-        registerListener(new BrewingManager());
-        setupMetrics();
-        startupPrint(); // Splash screen
-        if (AdaptConfig.get().isAutoUpdateCheck()) {
-            autoUpdateCheck();
-        }
-        protectorRegistry = new ProtectorRegistry();
-        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
-            protectorRegistry.registerProtector(new WorldGuardProtector());
-        }
-        if (getServer().getPluginManager().getPlugin("Factions") != null) {
-            protectorRegistry.registerProtector(new FactionsClaimProtector());
-        }
-        if (getServer().getPluginManager().getPlugin("ChestProtect") != null) {
-            protectorRegistry.registerProtector(new ChestProtectProtector());
-        }
-        if (getServer().getPluginManager().getPlugin("Residence") != null) {
-            protectorRegistry.registerProtector(new ResidenceProtector());
-        }
-    }
-
-    @Override
-    public void stop() {
-        sqlManager.closeConnection();
-        stopSim();
-        protectorRegistry.unregisterAll();
-
-    }
-
-    private void startupPrint() {
-        if (!AdaptConfig.get().isSplashScreen()) {
-            return;
-        }
-        Random r = new Random();
-        int game = r.nextInt(100);
-        if (game < 90) {
-            Adapt.info("\n" + C.GRAY + " █████" + C.DARK_RED + "╗ " + C.GRAY + "██████" + C.DARK_RED + "╗  " + C.GRAY + "█████" + C.DARK_RED + "╗ " + C.GRAY + "██████" + C.DARK_RED + "╗ " + C.GRAY + "████████" + C.DARK_RED + "╗\n" +
-                    C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "╗╚══" + C.GRAY + "██" + C.DARK_RED + "╔══╝" + C.WHITE + "         Version: " + C.DARK_RED + instance.getDescription().getVersion() + "     \n" +
-                    C.GRAY + "███████" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "███████" + C.DARK_RED + "║" + C.GRAY + "██████" + C.DARK_RED + "╔╝   " + C.GRAY + "██" + C.DARK_RED + "║" + C.WHITE + "            By: " + C.RED + "A" + C.GOLD + "r" + C.YELLOW + "c" + C.GREEN + "a" + C.DARK_GRAY + "n" + C.AQUA + "e " + C.AQUA + "A" + C.BLUE + "r" + C.DARK_BLUE + "t" + C.DARK_PURPLE + "s" + C.WHITE + " (Volmit Software)\n" +
-                    C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "╔══" + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "╔═══╝    " + C.GRAY + "██" + C.DARK_RED + "║" + C.WHITE + "            Java Version: " + C.DARK_RED + getJavaVersion() + "     \n" +
-                    C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██████" + C.DARK_RED + "╔╝" + C.GRAY + "██" + C.DARK_RED + "║  " + C.GRAY + "██" + C.DARK_RED + "║" + C.GRAY + "██" + C.DARK_RED + "║        " + C.GRAY + "██" + C.DARK_RED + "║   \n" +
-                    C.DARK_RED + "╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝        ╚═╝   \n");
-        } else {
-            info(SecretSplash.getSecretSplash().getRandom());
-        }
-    }
-
-    public File getJarFile() {
-        return getFile();
-    }
-
-    @Override
-    public String getTag(String subTag) {
-        return C.BOLD + "" + C.DARK_GRAY + "[" + C.BOLD + "" + C.DARK_RED + "Adapt" + C.BOLD + C.DARK_GRAY + "]" + C.RESET + "" + C.GRAY + ": ";
-    }
-
-    private void setupMetrics() {
-        if (AdaptConfig.get().isMetrics()) {
-            new Metrics(this, 13412);
-        }
     }
 }

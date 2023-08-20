@@ -179,7 +179,60 @@
     "challenge_excavate_5m": {
       "title": "Enigmatic Excavator",
       "description": "Excavate 5,000,000 Blocks"
+    },
+    "horrible_person": {
+      "title": "You're a Horrible Person",
+      "description": "Unfathomable, really"
+    },
+    "challenge_turtle_egg_smasher": {
+      "title": "Turtle Egg Smasher!",
+      "description": "Break 100 turtle eggs"
+    },
+    "challenge_turtle_egg_annihilator": {
+      "title": "Turtle Egg Annihilator!",
+      "description": "Break 500 turtle eggs"
+    },
+    "challenge_novice_hunter": {
+      "title": "Novice Hunter!",
+      "description": "Kill 100 entities"
+    },
+    "challenge_intermediate_hunter": {
+      "title": "Intermediate Hunter!",
+      "description": "Kill 500 entities"
+    },
+    "challenge_advanced_hunter": {
+      "title": "Advanced Hunter!",
+      "description": "Kill 5000 entities"
+    },
+    "challenge_creeper_conqueror": {
+      "title": "Creeper Conqueror!",
+      "description": "Kill 50 creepers"
+    },
+    "challenge_creeper_annihilator": {
+      "title": "Creeper Annihilator!",
+      "description": "Kill 200 creepers"
+    },
+    "challenge_pickaxe_1k": {
+      "title": "Novice Miner",
+      "description": "Break 1000 Blocks"
+    },
+    "challenge_pickaxe_5k": {
+      "title": "Skilled Miner",
+      "description": "Break 5000 Blocks"
+    },
+    "challenge_pickaxe_50k": {
+      "title": "Expert Miner",
+      "description": "Break 50,000 Blocks"
+    },
+    "challenge_pickaxe_500k": {
+      "title": "Master Miner",
+      "description": "Break 500,000 Blocks"
+    },
+    "challenge_pickaxe_5m": {
+      "title": "Legendary Miner",
+      "description": "Break 5,000,000 Blocks"
     }
+
   },
   "items": {
     "boundenderperal": {
@@ -567,13 +620,21 @@
     "deconstruction": {
       "name": "Deconstruction",
       "description": "Deconstruct blocks & items into salvageable base components!",
-      "lore1": "Place an any item + shears",
-      "lore2": "in a smithing table to deconstruct."
+      "lore1": "Drop any item on the ground.",
+      "lore2": "Then, Sneak and Right-Click with SHears"
     },
     "xp": {
       "name": "Crafting XP",
       "description": "Gain passive XP when crafting",
       "lore1": "Gain XP when crafting"
+    },
+    "reconstruction": {
+      "name": "Ore Reconstruction",
+      "description": "Recraft ores from their base components!",
+      "lore1": "8 of the Drops and 1 Host = 1 Ore (shapeless)",
+      "lore2": "Drops must be smelted (if applicable)",
+      "lore3": "Not including: Scraps, Quarts, and Emeralds etc...",
+      "lore4": "Host = Encasement. ie: Stone, Netherack, Deepslate"
     },
     "leather": {
       "name": "Craftable Leather",
@@ -661,6 +722,13 @@
       "lore1": "Gain Haste while excavating",
       "lore2": "x Levels of haste when you start mining ANY block."
     },
+    "spelunker": {
+      "name": "Super-Seeing Spelunker!",
+      "description": "See Ores with your eyes, but through the ground!",
+      "lore1": "Ore in your offhand, Glowberries in your main hand, and Sneak!",
+      "lore2": "Block Range: ",
+      "lore3": "Consumes Glowberry on use"
+    },
     "droptoinventory": {
       "name": "Shovel Drop-To-Inventory"
     },
@@ -702,7 +770,7 @@
     "cobweb": {
       "name": "Webby Creator",
       "description": "Gives you the ability to craft Cobwebs in a Crafting Table",
-      "lore1": "Four String, will craft a Cobweb."
+      "lore1": "Nine String, will craft a Cobweb."
     },
     "mushroomblocks": {
       "name": "Mushroom Maker",
@@ -827,6 +895,11 @@
       "lore1": "chance to negate withering (per piece).",
       "lore2": "Passive: Wearing Netherite Armor has a chance to negate ",
       "lore3": "withering."
+    },
+    "fireresist": {
+      "name": "Fire Resistance",
+      "description": "Resists fire by hardening your skin.",
+      "lore1": "chance to negate the burning effect!"
     }
   },
   "pickaxe": {
@@ -859,7 +932,8 @@
     "arrowrecovery": {
       "name": "Arrow Recovery",
       "description": "Recover Arrows after you have killed an enemy.",
-      "lore1": "Chance to Recover Arrows on Hit/Kill"
+      "lore1": "Chance to Recover Arrows on Hit/Kill",
+      "lore2": "Chance: "
     },
     "webshot": {
       "name": "Web Snare",
@@ -906,6 +980,12 @@
       "description": "Open an enderchest by Left-clicking it in your hand.",
       "lore1": "Click an Enderchest in your hand to open (Just dont place it)"
     },
+    "descent": {
+      "name": "Anti-Levitation",
+      "description": "Are you tired of being stuck in the air? This is the skill for you!",
+      "lore1": "Just Sneak to descend, and you will fall at a less than normal rate!",
+      "lore2": "Cooldown:"
+    },
     "gate": {
       "name": "Rift Gate",
       "description": "Teleport to a marked location.",
@@ -925,7 +1005,7 @@
     "oxygen": {
       "name": "Organic Oxygen Tank",
       "description": "Hold more oxygen in your tiny lungs!",
-      "lore1": "Oxygen"
+      "lore1": "Oxygen Capacity Increase"
     },
     "fishersfantasy": {
       "name": "Fisher's Fantasy",
@@ -1020,6 +1100,27 @@
       "name": "Thorns",
       "description": "Reflect damage back to your attacker!",
       "lore1": "Damage retaliated when struck"
+    },
+    "globe": {
+      "name": "Globe of Pain",
+      "description": "Divide the Damage you deal based on the number of enemies around you!",
+      "lore1": "The more enemies around you, the less damage you deal to each of them",
+      "lore2": "Range: ",
+      "lore3": "Added Damage to all Entities: "
+    },
+    "healing": {
+      "name": "Will of Pain",
+      "description": "Regain health based on the damage you deal!",
+      "lore1": "Harming things has never felt so good! Heal from Damage Dealt",
+      "lore2": "There is a 3 Second damage window, for healing and a 1 Second cooldown ",
+      "lore3": "Healing Per Damage Percent: "
+    },
+    "lance": {
+      "name": "Corpse Lances",
+      "description": "Killing an enemy or having an ability kill an enemy, spawns a lance that deals damage to a nearby enemy!",
+      "lore1": "Lances will Seek out from anything you kill, AND if This ability kills an enemy.",
+      "lore2": "Sacrifice a portion of your life in order to create the lances (this can kill you)",
+      "lore3": "Max Lances: 1 + "
     }
   },
   "unarmed": {

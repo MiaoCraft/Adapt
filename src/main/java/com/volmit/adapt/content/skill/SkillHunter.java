@@ -18,17 +18,20 @@
 
 package com.volmit.adapt.content.skill;
 
-import com.volmit.adapt.AdaptConfig;
+import com.volmit.adapt.api.advancement.AdaptAdvancement;
 import com.volmit.adapt.api.skill.SimpleSkill;
+import com.volmit.adapt.api.world.AdaptStatTracker;
 import com.volmit.adapt.content.adaptation.hunter.*;
 import com.volmit.adapt.util.C;
 import com.volmit.adapt.util.Localizer;
+import com.volmit.adapt.util.advancements.advancement.AdvancementDisplay;
+import com.volmit.adapt.util.advancements.advancement.AdvancementVisibility;
 import lombok.NoArgsConstructor;
-import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -62,112 +65,152 @@ public class SkillHunter extends SimpleSkill<SkillHunter.Config> {
         registerAdaptation(new HunterStrength());
         registerAdaptation(new HunterResistance());
         registerAdaptation(new HunterDropToInventory());
+        registerAdvancement(AdaptAdvancement.builder()
+                .icon(Material.TURTLE_EGG)
+                .key("horrible_person")
+                .title(Localizer.dLocalize("advancement", "horrible_person", "title"))
+                .description(Localizer.dLocalize("advancement", "horrible_person", "description"))
+                .frame(AdvancementDisplay.AdvancementFrame.GOAL)
+                .visibility(AdvancementVisibility.HIDDEN)
+                .build()
+        );
+        registerAdvancement(AdaptAdvancement.builder()
+                .icon(Material.TURTLE_EGG)
+                .key("challenge_turtle_egg_smasher")
+                .title(Localizer.dLocalize("advancement", "challenge_turtle_egg_smasher", "title"))
+                .description(Localizer.dLocalize("advancement", "challenge_turtle_egg_smasher", "description"))
+                .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                .visibility(AdvancementVisibility.PARENT_GRANTED)
+                .child(AdaptAdvancement.builder()
+                        .icon(Material.TURTLE_EGG)
+                        .key("challenge_turtle_egg_annihilator")
+                        .title(Localizer.dLocalize("advancement", "challenge_turtle_egg_annihilator", "title"))
+                        .description(Localizer.dLocalize("advancement", "challenge_turtle_egg_annihilator", "description"))
+                        .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                        .visibility(AdvancementVisibility.PARENT_GRANTED)
+                        .build())
+                .build());
+        registerAdvancement(AdaptAdvancement.builder()
+                .icon(Material.BONE)
+                .key("challenge_novice_hunter")
+                .title(Localizer.dLocalize("advancement", "challenge_novice_hunter", "title"))
+                .description(Localizer.dLocalize("advancement", "challenge_novice_hunter", "description"))
+                .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                .visibility(AdvancementVisibility.PARENT_GRANTED)
+                .child(AdaptAdvancement.builder()
+                        .icon(Material.IRON_SWORD)
+                        .key("challenge_intermediate_hunter")
+                        .title(Localizer.dLocalize("advancement", "challenge_intermediate_hunter", "title"))
+                        .description(Localizer.dLocalize("advancement", "challenge_intermediate_hunter", "description"))
+                        .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                        .visibility(AdvancementVisibility.PARENT_GRANTED)
+                        .child(AdaptAdvancement.builder()
+                                .icon(Material.DIAMOND_SWORD)
+                                .key("challenge_advanced_hunter")
+                                .title(Localizer.dLocalize("advancement", "challenge_advanced_hunter", "title"))
+                                .description(Localizer.dLocalize("advancement", "challenge_advanced_hunter", "description"))
+                                .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                                .visibility(AdvancementVisibility.PARENT_GRANTED)
+                                .build())
+                        .build())
+                .build());
+        registerAdvancement(AdaptAdvancement.builder()
+                .icon(Material.CREEPER_HEAD)
+                .key("challenge_creeper_conqueror")
+                .title(Localizer.dLocalize("advancement", "challenge_creeper_conqueror", "title"))
+                .description(Localizer.dLocalize("advancement", "challenge_creeper_conqueror", "description"))
+                .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                .visibility(AdvancementVisibility.PARENT_GRANTED)
+                .child(AdaptAdvancement.builder()
+                        .icon(Material.TNT)
+                        .key("challenge_creeper_annihilator")
+                        .title(Localizer.dLocalize("advancement", "challenge_creeper_annihilator", "title"))
+                        .description(Localizer.dLocalize("advancement", "challenge_creeper_annihilator", "description"))
+                        .frame(AdvancementDisplay.AdvancementFrame.CHALLENGE)
+                        .visibility(AdvancementVisibility.PARENT_GRANTED)
+                        .build())
+                .build());
+
+        registerStatTracker(AdaptStatTracker.builder().advancement("horrible_person").goal(1).stat("killed.turtleeggs").reward(getConfig().turtleEggKillXP).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_turtle_egg_smasher").goal(100).stat("killed.turtleeggs").reward(getConfig().turtleEggKillXP*10).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_turtle_egg_annihilator").goal(1000).stat("killed.turtleeggs").reward(getConfig().turtleEggKillXP*10).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_novice_hunter").goal(100).stat("killed.monsters").reward(getConfig().turtleEggKillXP*3).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_intermediate_hunter").goal(1000).stat("killed.monsters").reward(getConfig().turtleEggKillXP*3).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_advanced_hunter").goal(10000).stat("killed.monsters").reward(getConfig().turtleEggKillXP*3).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_creeper_conqueror").goal(100).stat("killed.creepers").reward(getConfig().turtleEggKillXP*3).build());
+        registerStatTracker(AdaptStatTracker.builder().advancement("challenge_creeper_annihilator").goal(1000).stat("killed.creepers").reward(getConfig().turtleEggKillXP*3).build());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    private void handleCooldownAndXp(Player p, double xpAmount) {
+        if (cooldowns.containsKey(p)) {
+            if (cooldowns.get(p) + getConfig().cooldownDelay > System.currentTimeMillis()) {
+                return;
+            } else {
+                cooldowns.remove(p);
+            }
+        }
+        cooldowns.put(p, System.currentTimeMillis());
+        xp(p, xpAmount);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void on(BlockBreakEvent e) {
-        if (!this.isEnabled() || e.isCancelled()) {
+        if (e.isCancelled()) {
             return;
         }
         Player p = e.getPlayer();
-        if (AdaptConfig.get().blacklistedWorlds.contains(p.getWorld().getName())) {
-            return;
-        }
-        if (!AdaptConfig.get().isXpInCreative() && (p.getGameMode().equals(GameMode.CREATIVE) || p.getGameMode().equals(GameMode.SPECTATOR))) {
-            return;
-        }
-        if (e.getBlock().getType().equals(Material.TURTLE_EGG)) {
-            if (cooldowns.containsKey(p)) {
-                if (cooldowns.get(p) + getConfig().cooldownDelay > System.currentTimeMillis()) {
-                    return;
-                } else {
-                    cooldowns.remove(p);
-                }
+        shouldReturnForPlayer(e.getPlayer(), e, () -> {
+            if (e.getBlock().getType().equals(Material.TURTLE_EGG)) {
+                handleCooldownAndXp(p, getConfig().turtleEggKillXP);
+                getPlayer(p).getData().addStat("killed.tutleeggs", 1);
             }
-            cooldowns.put(p, System.currentTimeMillis());
-            xp(e.getBlock().getLocation(), getConfig().turtleEggKillXP, getConfig().turtleEggSpatialRadius, getConfig().turtleEggSpatialDuration);
-            getPlayer(p).getData().addStat("killed.tutleeggs", 1);
-        }
+        });
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void on(PlayerInteractEvent e) {
-        if (!this.isEnabled()) {
+        if (e.isCancelled()) {
             return;
         }
         Player p = e.getPlayer();
-        if (AdaptConfig.get().blacklistedWorlds.contains(p.getWorld().getName())) {
-            return;
-        }
-        if (!AdaptConfig.get().isXpInCreative() && (p.getGameMode().equals(GameMode.CREATIVE) || p.getGameMode().equals(GameMode.SPECTATOR))) {
-            return;
-        }
-        if (e.getAction().equals(Action.PHYSICAL) && e.getClickedBlock() != null && e.getClickedBlock().getType().equals(Material.TURTLE_EGG)) {
-            if (cooldowns.containsKey(p)) {
-                if (cooldowns.get(p) + getConfig().cooldownDelay > System.currentTimeMillis()) {
-                    return;
-                } else {
-                    cooldowns.remove(p);
-                }
+        shouldReturnForPlayer(e.getPlayer(), e, () -> {
+            if (e.getAction().equals(Action.PHYSICAL) && e.getClickedBlock() != null && e.getClickedBlock().getType().equals(Material.TURTLE_EGG)) {
+                handleCooldownAndXp(p, getConfig().turtleEggKillXP);
+                getPlayer(p).getData().addStat("killed.tutleeggs", 1);
             }
-            cooldowns.put(p, System.currentTimeMillis());
-            xp(e.getClickedBlock().getLocation(), getConfig().turtleEggKillXP, getConfig().turtleEggSpatialRadius, getConfig().turtleEggSpatialDuration);
-            getPlayer(p).getData().addStat("killed.tutleeggs", 1);
-        }
+        });
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void on(EntityDeathEvent e) {
         if (e.getEntity().getKiller() == null) {
             return;
         }
-        if (!this.isEnabled()) {
-            return;
-        }
-        if (AdaptConfig.get().blacklistedWorlds.contains(e.getEntity().getWorld().getName())) {
-            return;
-        }
-        if (e.getEntity().getKiller() != null && e.getEntity().getKiller().getClass().getSimpleName().equals("CraftPlayer")) {
-            if (!AdaptConfig.get().isXpInCreative() && (e.getEntity().getKiller().getGameMode().equals(GameMode.CREATIVE) || e.getEntity().getKiller().getGameMode().equals(GameMode.SPECTATOR))) {
-                return;
-            }
-            double cmult = e.getEntity().getType().equals(EntityType.CREEPER) ? getConfig().creeperKillMultiplier : 1;
-            if (e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
-                if (e.getEntity().getPortalCooldown() > 0) {
-                    Player p = e.getEntity().getKiller();
-                    if (cooldowns.containsKey(p)) {
-                        if (cooldowns.get(p) + getConfig().cooldownDelay > System.currentTimeMillis()) {
-                            return;
-                        } else {
-                            cooldowns.remove(p);
-                        }
-                    }
-                    getPlayer(e.getEntity().getKiller()).getData().addStat("killed.kills", 1);
-                    cooldowns.put(p, System.currentTimeMillis());
-                    xp(e.getEntity().getLocation(), getConfig().spawnerMobReductionXpMultiplier * (e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthSpatialXPMultiplier * cmult), getConfig().killSpatialRadius, getConfig().killSpatialDuration);
-                    xp(e.getEntity().getKiller(), e.getEntity().getLocation(), getConfig().spawnerMobReductionXpMultiplier * (e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthXPMultiplier * cmult));
+        Player p = e.getEntity().getKiller();
 
-                } else {
-                    Player p = e.getEntity().getKiller();
-                    if (cooldowns.containsKey(p)) {
-                        if (cooldowns.get(p) + getConfig().cooldownDelay > System.currentTimeMillis()) {
-                            return;
-                        } else {
-                            cooldowns.remove(p);
-                        }
-                    }
-                    getPlayer(e.getEntity().getKiller()).getData().addStat("killed.kills", 1);
-                    cooldowns.put(p, System.currentTimeMillis());
-                    xp(e.getEntity().getLocation(), e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthSpatialXPMultiplier * cmult, getConfig().killSpatialRadius, getConfig().killSpatialDuration);
-                    xp(e.getEntity().getKiller(), e.getEntity().getLocation(), e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthXPMultiplier * cmult);
-                }
-            }
+        if (!getConfig().getXpForAttackingWithTools) {
+            return;
         }
+
+        shouldReturnForPlayer(p, () -> {
+            if (e.getEntity().getType().equals(EntityType.CREEPER)) {
+                double cmult = getConfig().creeperKillMultiplier;
+                double xpAmount = e.getEntity().getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthXPMultiplier * cmult;
+                if (e.getEntity().getPortalCooldown() > 0) {
+                    xpAmount *= getConfig().spawnerMobReductionXpMultiplier;
+                }
+                getPlayer(p).getData().addStat("killed.kills", 1);
+                handleCooldownAndXp(p,xpAmount);
+            } else {
+                handleEntityKill(p, e.getEntity());
+            }
+        });
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void on(CreatureSpawnEvent e) {
-        if (!this.isEnabled() || e.isCancelled()) {
+        if (!isEnabled() || e.isCancelled()) {
             return;
         }
         if (e.getSpawnReason().equals(CreatureSpawnEvent.SpawnReason.SPAWNER)) {
@@ -175,6 +218,18 @@ public class SkillHunter extends SimpleSkill<SkillHunter.Config> {
             ent.setPortalCooldown(630726000);
         }
     }
+
+    private void handleEntityKill(Player p, Entity entity) {
+        if (entity instanceof LivingEntity livingEntity) {
+            double xpAmount = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * getConfig().killMaxHealthXPMultiplier;
+            if (entity.getPortalCooldown() > 0) {
+                xpAmount *= getConfig().spawnerMobReductionXpMultiplier;
+            }
+            getPlayer(p).getData().addStat("killed.kills", 1);
+            handleCooldownAndXp(p, xpAmount);
+        }
+    }
+
 
     @Override
     public void onTick() {
@@ -189,15 +244,11 @@ public class SkillHunter extends SimpleSkill<SkillHunter.Config> {
     @NoArgsConstructor
     protected static class Config {
         boolean enabled = true;
+        boolean getXpForAttackingWithTools = true;
         double turtleEggKillXP = 100;
-        int turtleEggSpatialRadius = 5;
-        long turtleEggSpatialDuration = 15000;
         double creeperKillMultiplier = 2;
-        double killMaxHealthSpatialXPMultiplier = 3;
         double killMaxHealthXPMultiplier = 4;
-        int killSpatialRadius = 25;
         long cooldownDelay = 1000;
-        long killSpatialDuration = 10000;
         double spawnerMobReductionXpMultiplier = 0.5;
     }
 }
